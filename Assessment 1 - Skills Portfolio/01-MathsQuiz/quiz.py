@@ -16,8 +16,7 @@ class MathsQuizApp:
     def __init__(self, root):
         self.root = root
         self.root.title("Maths Quiz")
-        # Increased height slightly to ensure all elements fit
-        self.root.geometry("400x400") 
+        self.root.geometry("400x450") 
         self.root.resizable(False, False)
 
         # Game state variables
@@ -30,6 +29,8 @@ class MathsQuizApp:
         self.num2 = 0
         self.operation = ''
         self.correct_answer = 0
+        self.time_left = 15
+        self.timer_id = None
 
         # UI Elements
         self.title_label = tk.Label(root, text="Maths Quiz", font=("Arial", 16, "bold"))
@@ -38,8 +39,12 @@ class MathsQuizApp:
         self.info_label = tk.Label(root, text="Select a difficulty level to begin.", font=("Arial", 12))
         self.info_label.pack(pady=10)
 
+        # NEW: Timer Label
+        self.timer_label = tk.Label(root, text="", font=("Arial", 14, "bold"), fg="red")
+        self.timer_label.pack(pady=5)
+
         self.problem_label = tk.Label(root, text="", font=("Arial", 24, "bold"))
-        self.problem_label.pack(pady=20)
+        self.problem_label.pack(pady=10)
 
         self.answer_entry = tk.Entry(root, font=("Arial", 14), width=10, justify='center')
         # Input validation: only allow integers
@@ -59,6 +64,7 @@ class MathsQuizApp:
     def display_menu(self):
         """Displays the difficulty level menu at the beginning of the quiz."""
         self.problem_label.config(text="")
+        self.timer_label.config(text="")
         self.info_label.config(text="Select a difficulty level:")
         
         # Ensure entry and submit are hidden
@@ -75,10 +81,8 @@ class MathsQuizApp:
 
         btn_easy = tk.Button(self.root, text="1. Easy (Single Digit)", command=lambda: self.start_quiz('easy'), width=25)
         btn_easy.pack(pady=5)
-        
         btn_mod = tk.Button(self.root, text="2. Moderate (Double Digit)", command=lambda: self.start_quiz('moderate'), width=25)
         btn_mod.pack(pady=5)
-        
         btn_adv = tk.Button(self.root, text="3. Advanced (4-Digit)", command=lambda: self.start_quiz('advanced'), width=25)
         btn_adv.pack(pady=5)
 
@@ -112,6 +116,9 @@ class MathsQuizApp:
         self.info_label.config(text=f"Question {self.current_question} of {self.total_questions}")
         self.answer_entry.delete(0, tk.END)
         self.answer_entry.focus()
+        
+        # NEW: Start the timer
+        self.start_timer()
 
     def is_correct(self, user_answer):
         """Checks whether the user's answer was correct."""
@@ -184,16 +191,14 @@ class MathsQuizApp:
     def check_answer(self):
         """Handles the logic for checking the answer and scoring."""
         user_input = self.answer_entry.get().strip()
-        if not user_input:
-            return
+        if not user_input: return
             
         user_answer = int(user_input)
         
         if self.is_correct(user_answer):
-            if self.attempts == 0:
-                self.score += 10
-            elif self.attempts == 1:
-                self.score += 5
+            self.cancel_timer() # Stop timer on correct answer
+            if self.attempts == 0: self.score += 10
+            elif self.attempts == 1: self.score += 5
             messagebox.showinfo("Correct!", "Well done!")
             self.next_question()
         else:
@@ -203,8 +208,32 @@ class MathsQuizApp:
                 self.answer_entry.delete(0, tk.END)
                 self.answer_entry.focus()
             else:
+                self.cancel_timer()
                 messagebox.showerror("Incorrect", f"Out of attempts! The correct answer was {self.correct_answer}.")
                 self.next_question()
+
+    # --- NEW: Timer Logic ---
+    def start_timer(self):
+        self.time_left = 15
+        self.timer_label.config(text=f"Time: {self.time_left}s", fg="red")
+        self.update_timer()
+
+    def update_timer(self):
+        if self.time_left > 0:
+            self.time_left -= 1
+            self.timer_label.config(text=f"Time: {self.time_left}s")
+            # Color changes to orange when low
+            if self.time_left <= 5: self.timer_label.config(fg="darkorange")
+            self.timer_id = self.root.after(1000, self.update_timer)
+        else:
+            self.cancel_timer()
+            messagebox.showwarning("Time's Up!", "You ran out of time!")
+            self.next_question()
+
+    def cancel_timer(self):
+        if self.timer_id:
+            self.root.after_cancel(self.timer_id)
+            self.timer_id = None
 
 if __name__ == "__main__":
     root = tk.Tk()
