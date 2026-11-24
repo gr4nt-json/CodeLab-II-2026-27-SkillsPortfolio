@@ -28,8 +28,17 @@ class StudentManagerApp:
         """Builds the main interface."""
         tk.Label(self.root, text="Student Manager System", font=("Arial", 16, "bold")).pack(pady=10)
         
+        # NEW: Search Bar
+        search_frame = tk.Frame(self.root)
+        search_frame.pack(pady=5)
+        tk.Label(search_frame, text="Search (Name or Code):").pack(side=tk.LEFT, padx=5)
+        self.search_entry = tk.Entry(search_frame, width=30)
+        self.search_entry.pack(side=tk.LEFT, padx=5)
+        # NEW: Bind the KeyRelease event to the filter function
+        self.search_entry.bind("<KeyRelease>", self.filter_students)
+        
         # Output area
-        self.output_text = tk.Text(self.root, height=20, width=80, font=("Consolas", 11), state=tk.DISABLED)
+        self.output_text = tk.Text(self.root, height=18, width=80, font=("Consolas", 11), state=tk.DISABLED)
         self.output_text.pack(pady=10, padx=10)
         
         # Button frame
@@ -107,20 +116,40 @@ class StudentManagerApp:
 
     # --- Menu Functions ---
 
-    def view_all(self):
-        if not self.students:
+    # MODIFIED: Now accepts an optional list to support filtering
+    def view_all(self, student_list=None):
+        if student_list is None:
+            student_list = self.students
+            
+        if not student_list:
             self.display_output("No records found.")
             return
             
-        output = "=== ALL STUDENT RECORDS ===\n\n"
-        total_pct = 0
-        for s in self.students:
-            output += self.format_student(s) + "\n"
-            total_pct += self.calculate_stats(s)[2]
-            
-        avg_pct = total_pct / len(self.students)
-        output += f"\n=== CLASS SUMMARY ===\nTotal Students: {len(self.students)}\nAverage Percentage: {avg_pct:.1f}%"
+        output = "=== STUDENT RECORDS ===\n\n"
+        
+        # Only show class summary if we are viewing ALL students (not filtered)
+        if student_list == self.students:
+            total_pct = 0
+            for s in student_list:
+                output += self.format_student(s) + "\n"
+                total_pct += self.calculate_stats(s)[2]
+            avg_pct = total_pct / len(student_list)
+            output += f"\n=== CLASS SUMMARY ===\nTotal Students: {len(student_list)}\nAverage Percentage: {avg_pct:.1f}%"
+        else:
+            for s in student_list:
+                output += self.format_student(s) + "\n"
+                
         self.display_output(output)
+
+    # NEW: Real-time search filter
+    def filter_students(self, event):
+        search_term = self.search_entry.get().lower()
+        if not search_term:
+            self.view_all() # Reset to full list if search is empty
+            return
+            
+        filtered = [s for s in self.students if search_term in s['name'].lower() or search_term in s['code']]
+        self.view_all(student_list=filtered)
 
     def view_individual(self):
         code = simpledialog.askstring("Input", "Enter Student Code:")
