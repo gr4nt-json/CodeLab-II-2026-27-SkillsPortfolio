@@ -22,6 +22,7 @@ class JokeApp:
 
         self.jokes = []
         self.current_joke = None
+        self.typing_id = None # NEW: To track the typing effect
 
         self.load_jokes()
 
@@ -67,9 +68,8 @@ class JokeApp:
             self.root.quit()
 
     def tell_joke(self):
-        """Selects a random joke and displays the setup."""
-        if not self.jokes:
-            return
+        self.cancel_typing() # NEW: Stop any ongoing typing
+        if not self.jokes: return
             
         self.current_joke = random.choice(self.jokes)
         self.setup_label.config(text=self.current_joke[0])
@@ -82,17 +82,34 @@ class JokeApp:
     def show_punchline(self):
         """Reveals the punchline of the current joke."""
         if self.current_joke:
-            self.punchline_label.config(text=self.current_joke[1])
-            self.punchline_btn.config(state=tk.DISABLED) # Prevent clicking twice
+            self.punchline_btn.config(state=tk.DISABLED)
+            # NEW: Start typewriter effect
+            self.type_punchline(self.current_joke[1], 0)
 
     def next_joke(self):
         """Requests a new random joke."""
         self.tell_joke()
 
     def quit_app(self):
-        """Closes the application."""
+        self.cancel_typing()
         if messagebox.askokcancel("Quit", "Do you want to quit?"):
             self.root.destroy()
+
+    # --- NEW: Typewriter Logic ---
+    def type_punchline(self, text, index):
+        """Recursively adds one character at a time using .after()"""
+        if index < len(text):
+            self.punchline_label.config(text=self.punchline_label.cget("text") + text[index])
+            # 30ms delay between characters
+            self.typing_id = self.root.after(30, lambda: self.type_punchline(text, index + 1))
+        else:
+            self.typing_id = None
+
+    def cancel_typing(self):
+        """Stops the typing effect if the user moves to the next joke."""
+        if self.typing_id:
+            self.root.after_cancel(self.typing_id)
+            self.typing_id = None
 
 if __name__ == "__main__":
     root = tk.Tk()
